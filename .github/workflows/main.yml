@@ -1,0 +1,39 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Show environment
+        shell: pwsh
+        run: |
+          go version
+          go env
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Build Inspector
+        shell: pwsh
+        run: |
+          cd cmd/inspector
+          go build -v -o inspector.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inspector-windows
+          path: cmd/inspector/inspector.exe
