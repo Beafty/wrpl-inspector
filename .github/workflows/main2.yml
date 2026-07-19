@@ -1,0 +1,63 @@
+name: Build Windows Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+
+      - name: Show environment
+        shell: msys2 {0}
+        run: |
+          go version
+          go env
+          gcc --version
+          where gcc
+
+      - name: Download modules
+        shell: msys2 {0}
+        run: |
+          go mod download
+
+      - name: Build
+        shell: msys2 {0}
+        env:
+          CGO_ENABLED: 1
+        run: |
+          cd cmd/inspector
+          go build -v -o inspector.exe
+
+      - name: Collect runtime DLLs
+        shell: msys2 {0}
+        run: |
+          cp /mingw64/bin/libwinpthread-1.dll cmd/inspector/
+          cp /mingw64/bin/libgcc_s_seh-1.dll cmd/inspector/
+          cp /mingw64/bin/libstdc++-6.dll cmd/inspector/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inspector-windows
+          path: |
+            cmd/inspector/inspector.exe
+            cmd/inspector/libwinpthread-1.dll
+            cmd/inspector/libgcc_s_seh-1.dll
+            cmd/inspector/libstdc++-6.dll
